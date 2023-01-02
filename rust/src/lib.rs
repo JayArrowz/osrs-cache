@@ -61,7 +61,7 @@ struct Js5IndexEntry {
     uncompressed_length: u32,
     digest: Option<bool>,
     capacity: u32,
-    entries: HashMap<u32, Js5IndexFile>,
+    files: HashMap<u32, Js5IndexFile>,
 }
 
 struct Js5Index {
@@ -71,7 +71,7 @@ struct Js5Index {
     has_digests: bool,
     has_lengths: bool,
     has_uncompressed_checksums: bool,
-    entries: BTreeMap<u32, Js5IndexEntry>,
+    groups: BTreeMap<u32, Js5IndexEntry>,
 }
 
 const MAX_INDEXES: usize = 255;
@@ -178,14 +178,14 @@ impl Cache {
             has_lengths: (flags & Js5IndexFlags::FlagLengths as u8) != 0,
             has_uncompressed_checksums: (flags & Js5IndexFlags::FlagUncompressedChecksums as u8)
                 != 0,
-            entries: BTreeMap::new(),
+            groups: BTreeMap::new(),
         };
 
         // Begin creating the groups
         let mut prev_group_id = 0;
         (0..size).for_each(|_| {
             prev_group_id += read_func(&mut csr);
-            index.entries.insert(
+            index.groups.insert(
                 prev_group_id,
                 Js5IndexEntry {
                     name_hash: -1,
@@ -196,23 +196,23 @@ impl Cache {
                     uncompressed_length: 0,
                     digest: None,
                     capacity: 0,
-                    entries: HashMap::new(),
+                    files: HashMap::new(),
                 },
             );
         });
 
         if index.has_names {
-            for (id, group) in &mut index.entries {
+            for (id, group) in &mut index.groups {
                 group.name_hash = csr.read_i32().unwrap();
             }
         }
 
-        for (id, group) in &mut index.entries {
+        for (id, group) in &mut index.groups {
             group.checksum = csr.read_u32().unwrap();
         }
 
         if index.has_uncompressed_checksums {
-            for (id, group) in &mut index.entries {
+            for (id, group) in &mut index.groups {
                 group.uncompressed_checksum = csr.read_u32().unwrap();
             }
         }
@@ -224,33 +224,33 @@ impl Cache {
         }
 
         if index.has_lengths {
-            for (id, group) in &mut index.entries {
+            for (id, group) in &mut index.groups {
                 group.length = csr.read_u32().unwrap();
                 group.uncompressed_length = csr.read_u32().unwrap();
             }
         }
 
-        for (id, group) in &mut index.entries {
+        for (id, group) in &mut index.groups {
             group.version = csr.read_u32().unwrap();
         }
 
         let group_sizes: Vec<u32> = (0..size).map(|_| read_func(&mut csr)).collect();
 
-        for (i, (id, group)) in index.entries.iter_mut().enumerate() {
+        for (i, (id, group)) in index.groups.iter_mut().enumerate() {
             let group_size = group_sizes[i];
 
             let mut prev_file_id = 0;
             (0..group_size).for_each(|_| {
                 prev_file_id += read_func(&mut csr);
                 group
-                    .entries
+                    .files
                     .insert(prev_file_id, Js5IndexFile { name_hash: -1 });
             });
         }
 
         if index.has_names {
-            for (id, group) in &mut index.entries {
-                for (file_id, file) in &mut group.entries {
+            for (id, group) in &mut index.groups {
+                for (file_id, file) in &mut group.files {
                     file.name_hash = csr.read_i32().unwrap();
                 }
             }
@@ -259,7 +259,7 @@ impl Cache {
         // Print data of the "items" group in the cache aka group 10
         trace!(
             "Len of files: {}",
-            index.entries.get(&10).unwrap().entries.len()
+            index.groups.get(&10).unwrap().files.len()
         );
 
         // EVERYTHING ABOVE FROM HERE SHOULD BE DONE ON CACHE OPENING, NOT IN READING
@@ -283,14 +283,14 @@ impl Cache {
 
         let data_index = 0;
         let trailer_index = archive_data2.len()
-            - (stripes as usize * index.entries.get(&10).unwrap().entries.len() * 4) as usize
+            - (stripes as usize * index.groups.get(&10).unwrap().files.len() * 4) as usize
             - 1;
 
         trace!("Trailer index: {}", trailer_index);
 
         let mut readerrr = Cursor::new(&archive_data2[trailer_index..]);
 
-        let mut lens = vec![0; index.entries.get(&10).unwrap().entries.len()];
+        let mut lens = vec![0; index.groups.get(&10).unwrap().files.len()];
 
         for i in 0..stripes {
             let mut prev_len = 0;
@@ -304,13 +304,13 @@ impl Cache {
 
         let mut files_final: BTreeMap<u32, Vec<u8>> = BTreeMap::new();
 
-        for (x, y) in &index.entries.get(&10).unwrap().entries {
+        for (x, y) in &index.groups.get(&10).unwrap().files {
             files_final.insert(*x, vec![0; lens[*x as usize] as usize]);
         }
 
         for i in 0..stripes {
             let mut prev_len = 0;
-            for j in 0..index.entries.get(&10).unwrap().entries.len() {
+            for j in 0..index.groups.get(&10).unwrap().files.len() {
                 prev_len += lens[j];
                 file_reader_stuff
                     .read_exact(&mut files_final.get_mut(&(j as u32)).unwrap())
