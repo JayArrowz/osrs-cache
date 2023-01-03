@@ -557,6 +557,14 @@ pub unsafe extern "C" fn cache_read(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn free_cache_read_buffer(buffer: *mut u8) {
+    // If the buffer is not null, drop the Vec
+    if !buffer.is_null() {
+        drop(Vec::from_raw_parts(buffer, 0, 0))
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn cache_write(cache_ptr: *mut Cache, archive: u32) {}
 #[no_mangle]
 pub unsafe extern "C" fn cache_remove(cache_ptr: *mut Cache, archive: u32) {}
