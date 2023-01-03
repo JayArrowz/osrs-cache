@@ -25,12 +25,30 @@ pub enum CacheError {
     Unknown,
 }
 
+struct DiskStore {
+    data: Mmap,
+
+    indexes: HashMap<usize, Mmap>,
+}
+
+struct Archive {
+    dirty: bool,
+}
+
+impl Archive {
+    pub fn read(&self, group: u16, file: u16) -> Vec<u8> {
+        Vec::new()
+    }
+}
+
 pub struct Cache {
     /// The data file
     data: Mmap,
 
     /// Indexes
     indexes: HashMap<usize, Mmap>,
+
+    archives: HashMap<u16, Archive>,
 }
 
 enum Js5Protocol {
@@ -109,6 +127,7 @@ impl Cache {
         Ok(Self {
             data: data_file_mmap,
             indexes,
+            archives: HashMap::new(),
         })
     }
 
