@@ -43,11 +43,8 @@ impl Archive {
 }
 
 pub struct Cache {
-    /// The data file
-    data: Mmap,
-
-    /// Indexes
-    indexes: HashMap<usize, Mmap>,
+    /// Store
+    store: DiskStore,
 
     /// Archives
     archives: HashMap<u16, Archive>,
@@ -127,8 +124,10 @@ impl Cache {
 
         // Return the Cache struct
         Ok(Self {
-            data: data_file_mmap,
-            indexes,
+            store: DiskStore {
+                data: data_file_mmap,
+                indexes,
+            },
             archives: HashMap::new(),
         })
     }
@@ -352,6 +351,7 @@ impl Cache {
     fn fun_name(&self, archive: usize, group: u16) -> Vec<u8> {
         // Get the archive (index file)
         let index_data = self
+            .store
             .indexes
             .get(&archive)
             .unwrap_or_else(|| panic!("index file with id {} was not found", group));
@@ -391,7 +391,7 @@ impl Cache {
             // Copy over new data
             for i in 0..length {
                 //println!("{} {}", i + offset, self.data[(i + offset) as usize]);
-                temp_archive_buffer[i as usize] = self.data[(i + offset) as usize];
+                temp_archive_buffer[i as usize] = self.store.data[(i + offset) as usize];
             }
 
             // Parse header values from the temp buffer
