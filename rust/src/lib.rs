@@ -48,6 +48,7 @@ pub struct Cache {
     /// Indexes
     indexes: HashMap<usize, Mmap>,
 
+    /// Archives
     archives: HashMap<u16, Archive>,
 }
 
