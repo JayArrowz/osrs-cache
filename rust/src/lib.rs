@@ -384,11 +384,11 @@ impl Cache {
             // Get the block size
             let data_block_size = cmp::min(archive_len - read_bytes_count, 512);
 
-            // Calc new len
+            // Calulate the length of the data block
             let header_size = 8;
             let length = data_block_size + header_size;
 
-            // Copy over new data
+            // Copy over new data to the temp buffer
             for i in 0..length {
                 //println!("{} {}", i + offset, self.data[(i + offset) as usize]);
                 temp_archive_buffer[i as usize] = self.store.data[(i + offset) as usize];
@@ -409,7 +409,7 @@ impl Cache {
             assert_eq!(part, part_id);
             assert_ne!(sector, next_sector);
 
-            // Add new data to archive data
+            // Add new data to archive data and update the read bytes count
             archive_data.extend(temp_archive_buffer[header_size as usize..length as usize].iter());
             read_bytes_count += length - header_size;
 
