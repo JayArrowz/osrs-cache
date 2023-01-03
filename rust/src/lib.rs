@@ -37,7 +37,7 @@ struct Archive {
 }
 
 impl Archive {
-    pub fn read(&self, group: u16, file: u16, data: Mmap) -> Vec<u8> {
+    pub fn read(&self, group: u16, file: u16, data: &Mmap) -> Vec<u8> {
         Vec::new()
     }
 }
