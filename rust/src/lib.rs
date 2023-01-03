@@ -1,6 +1,6 @@
 use bzip2::read::BzDecoder;
 use memmap2::Mmap;
-use osrs_buffer::ReadExt;
+use osrs_bytes::ReadExt;
 use std::{
     cmp,
     collections::{BTreeMap, HashMap},
