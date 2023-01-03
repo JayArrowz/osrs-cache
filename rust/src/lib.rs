@@ -2,6 +2,7 @@ use bzip2::read::BzDecoder;
 use memmap2::Mmap;
 use osrs_buffer::ReadExt;
 use std::{
+    cmp,
     collections::{BTreeMap, HashMap},
     ffi::CStr,
     fs::{self, File},
@@ -380,11 +381,8 @@ impl Cache {
                 panic!("Sector 0");
             }
 
-            // Handle block size
-            let mut data_block_size = archive_len - read_bytes_count;
-            if data_block_size > 512 {
-                data_block_size = 512;
-            }
+            // Get the block size
+            let data_block_size = cmp::min(archive_len - read_bytes_count, 512);
 
             // Calc new len
             let header_size = 8;
